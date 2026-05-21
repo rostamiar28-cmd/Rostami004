@@ -2,14 +2,10 @@ import express from "express";
 import fetch from "node-fetch";
 
 const app = express();
-
-// پورت Railway
 const PORT = process.env.PORT || 3000;
-
-// دامنه مقصد از متغیر محیطی
 const TARGET = process.env.TARGET_DOMAIN;
 
-// برای گرفتن بادی خام
+// گرفتن بادی خام
 app.use(express.raw({ type: "*/*" }));
 
 // روت تست
@@ -17,7 +13,7 @@ app.get("/ok", (req, res) => {
   res.status(200).send("RELAY OK");
 });
 
-// ریلی همه درخواست‌ها
+// رله کردن همه درخواست‌ها
 app.all("*", async (req, res) => {
   if (!TARGET) {
     return res.status(500).send("TARGET_DOMAIN is not set");
@@ -26,9 +22,16 @@ app.all("*", async (req, res) => {
   try {
     const url = new URL(req.originalUrl, TARGET);
 
+    // حذف هدرهای مشکل‌ساز که باعث SSL Error می‌شن
+    const cleanHeaders = { ...req.headers };
+    delete cleanHeaders.host;
+    delete cleanHeaders["x-forwarded-host"];
+    delete cleanHeaders["x-forwarded-proto"];
+    delete cleanHeaders["x-forwarded-for"];
+
     const upstream = await fetch(url, {
       method: req.method,
-      headers: req.headers,
+      headers: cleanHeaders,
       body: ["GET", "HEAD"].includes(req.method) ? undefined : req.body
     });
 
